@@ -1,8 +1,9 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, session
 import random
 from logic import KnowledgeBase
 
 app = Flask(__name__)
+app.secret_key = "wumpus_secret"  # needed for session storage
 
 # this function builds wumpus world
 def build_world(rows, cols):
@@ -27,15 +28,19 @@ def start():
     cols = int(request.json["cols"])
     grid, agent_pos = build_world(rows, cols)
     kb = KnowledgeBase(rows, cols)
-    request.session = {"grid": grid, "agent": agent_pos, "kb": kb}
+    session["grid"] = grid
+    session["agent"] = agent_pos
+    session["kb"] = kb.__dict__  # store KB state
     return jsonify({"grid": grid, "agent": agent_pos})
 
 @app.route("/move", methods=["POST"])
 def move():
     direction = request.json["direction"]
-    grid = request.session["grid"]
-    agent = request.session["agent"]
-    kb = request.session["kb"]
+    grid = session["grid"]
+    agent = session["agent"]
+    kb = KnowledgeBase(session["kb"]["rows"], session["kb"]["cols"])
+    kb.clauses = session["kb"]["clauses"]
+    kb.steps = session["kb"]["steps"]
 
     r, c = agent
     if direction == "right": c += 1
@@ -48,18 +53,18 @@ def move():
 
     agent = (r,c)
     percepts = []
-    # check percepts
     for dr, dc in [(1,0),(-1,0),(0,1),(0,-1)]:
         nr, nc = r+dr, c+dc
         if 0 <= nr < len(grid) and 0 <= nc < len(grid[0]):
             if grid[nr][nc] == "P": percepts.append("Breeze")
             if grid[nr][nc] == "W": percepts.append("Stench")
 
-    # tell KB
     kb.tell(agent, percepts)
     safe = kb.ask_safe(agent)
 
-    request.session["agent"] = agent
+    session["agent"] = agent
+    session["kb"] = kb.__dict__
+
     return jsonify({"agent": agent, "percepts": percepts, "safe": safe, "steps": kb.steps})
 
 if __name__ == "__main__":

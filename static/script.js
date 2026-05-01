@@ -1,5 +1,21 @@
-// this script draws grid and updates metrics
-function drawGrid(grid, agent) {
+let agent = null;
+let grid = null;
+
+async function startGame() {
+  let rows = document.getElementById("rows").value;
+  let cols = document.getElementById("cols").value;
+  let res = await fetch("/start", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({rows, cols})
+  });
+  let data = await res.json();
+  grid = data.grid;
+  agent = data.agent;
+  drawGrid();
+}
+
+function drawGrid() {
   let rows = grid.length, cols = grid[0].length;
   let container = document.getElementById("grid");
   container.style.gridTemplateColumns = `repeat(${cols}, 40px)`;
