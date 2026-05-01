@@ -1,71 +1,67 @@
-from flask import Flask, render_template, request, jsonify, session
-import random
-from logic import KnowledgeBase
+from flask import Flask, render_template, jsonify, request
+from logic import KnowledgeBase, WumpusWorld
 
 app = Flask(__name__)
-app.secret_key = "wumpus_secret"
 
-# this function builds wumpus world
-def build_world(rows, cols):
-    grid = [["" for _ in range(cols)] for _ in range(rows)]
-    # place wumpus randomly
-    w_row, w_col = random.randint(0, rows-1), random.randint(0, cols-1)
-    grid[w_row][w_col] = "W"
-    # place pits randomly
-    for _ in range((rows*cols)//6):
-        p_row, p_col = random.randint(0, rows-1), random.randint(0, cols-1)
-        if grid[p_row][p_col] == "":
-            grid[p_row][p_col] = "P"
-    return grid, (0,0)
+world = None
+kb = None
 
 @app.route("/")
-def index():
+def home():
     return render_template("index.html")
 
 @app.route("/start", methods=["POST"])
 def start():
-    rows = int(request.json["rows"])
-    cols = int(request.json["cols"])
-    grid, agent_pos = build_world(rows, cols)
+    global world, kb
+    data = request.json
+    rows = int(data["rows"])
+    cols = int(data["cols"])
+
+    world = WumpusWorld(rows, cols)
     kb = KnowledgeBase(rows, cols)
-    session["grid"] = grid
-    session["agent"] = agent_pos
-    session["kb"] = kb.__dict__
-    return jsonify({"grid": grid, "agent": agent_pos})
 
-@app.route("/move", methods=["POST"])
-def move():
-    direction = request.json["direction"]
-    grid = session["grid"]
-    agent = session["agent"]
-    kb = KnowledgeBase(session["kb"]["rows"], session["kb"]["cols"])
-    kb.clauses = session["kb"]["clauses"]
-    kb.steps = session["kb"]["steps"]
+    return jsonify({"msg":"world created"})
 
-    r, c = agent
-    if direction == "right": c += 1
-    elif direction == "left": c -= 1
-    elif direction == "up": r -= 1
-    elif direction == "down": r += 1
+@app.route("/step")
+def step():
+    global world, kb
 
-    if r < 0 or c < 0 or r >= len(grid) or c >= len(grid[0]):
-        return jsonify({"error": "Invalid move"})
+    r,c = world.agent
+    breeze, stench = world.percepts()
 
-    agent = (r,c)
     percepts = []
-    for dr, dc in [(1,0),(-1,0),(0,1),(0,-1)]:
-        nr, nc = r+dr, c+dc
-        if 0 <= nr < len(grid) and 0 <= nc < len(grid[0]):
-            if grid[nr][nc] == "P": percepts.append("Breeze")
-            if grid[nr][nc] == "W": percepts.append("Stench")
+    if breeze: percepts.append("Breeze")
+    if stench: percepts.append("Stench")
 
-    kb.tell(agent, percepts)
-    safe = kb.ask_safe(agent)
+    # TELL KB percept rules
+    if breeze:
+        kb.tell([f"P{r}{c}"])
+    if stench:
+        kb.tell([f"W{r}{c}"])
 
-    session["agent"] = agent
-    session["kb"] = kb.__dict__
+    world.visited.add((r,c))
 
-    return jsonify({"agent": agent, "percepts": percepts, "safe": safe, "steps": kb.steps})
+    # move randomly to safe neighbor (demo)
+    for n in world.neighbors(r,c):
+        if n not in world.visited:
+            world.agent = n
+            break
+
+    grid = []
+    for i in range(world.rows):
+        row = []
+        for j in range(world.cols):
+            if (i,j) in world.visited:
+                row.append("safe")
+            else:
+                row.append("unknown")
+        grid.append(row)
+
+    return jsonify({
+        "grid": grid,
+        "percepts": percepts,
+        "inference": kb.inference_steps
+    })
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run()
