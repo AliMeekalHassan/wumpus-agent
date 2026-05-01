@@ -15,6 +15,21 @@ async function startGame() {
   drawGrid();
 }
 
+async function move(direction) {
+  let res = await fetch("/move", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({direction})
+  });
+  let data = await res.json();
+  agent = data.agent;
+  drawGrid();
+  document.getElementById("metrics").innerText =
+    "Percepts: " + data.percepts.join(", ") +
+    " | Safe: " + data.safe +
+    " | Steps: " + data.steps;
+}
+
 function drawGrid() {
   let rows = grid.length, cols = grid[0].length;
   let container = document.getElementById("grid");
@@ -25,6 +40,7 @@ function drawGrid() {
       let cell = document.createElement("div");
       cell.classList.add("cell","unknown");
       if (r === agent[0] && c === agent[1]) cell.classList.add("safe");
+      if (grid[r][c] === "P" || grid[r][c] === "W") cell.classList.add("hazard");
       container.appendChild(cell);
     }
   }

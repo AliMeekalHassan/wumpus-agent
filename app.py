@@ -3,7 +3,7 @@ import random
 from logic import KnowledgeBase
 
 app = Flask(__name__)
-app.secret_key = "wumpus_secret"  # needed for session storage
+app.secret_key = "wumpus_secret"
 
 # this function builds wumpus world
 def build_world(rows, cols):
@@ -12,11 +12,11 @@ def build_world(rows, cols):
     w_row, w_col = random.randint(0, rows-1), random.randint(0, cols-1)
     grid[w_row][w_col] = "W"
     # place pits randomly
-    for _ in range((rows*cols)//6):  # ~16% pits
+    for _ in range((rows*cols)//6):
         p_row, p_col = random.randint(0, rows-1), random.randint(0, cols-1)
         if grid[p_row][p_col] == "":
             grid[p_row][p_col] = "P"
-    return grid, (0,0)  # agent starts at (0,0)
+    return grid, (0,0)
 
 @app.route("/")
 def index():
@@ -30,7 +30,7 @@ def start():
     kb = KnowledgeBase(rows, cols)
     session["grid"] = grid
     session["agent"] = agent_pos
-    session["kb"] = kb.__dict__  # store KB state
+    session["kb"] = kb.__dict__
     return jsonify({"grid": grid, "agent": agent_pos})
 
 @app.route("/move", methods=["POST"])
