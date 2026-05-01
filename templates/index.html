@@ -1,28 +1,60 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Wumpus Logic Agent</title>
+<title>Dynamic Wumpus Logic Agent</title>
 <style>
-body{font-family:Arial;text-align:center}
-.grid{display:grid;margin:20px auto;width:400px}
-.cell{border:1px solid #999;height:40px}
-.safe{background:#7CFC90}
-.unknown{background:#ccc}
+body{
+  font-family:Segoe UI;
+  background:#0f172a;
+  color:white;
+  text-align:center;
+}
+.card{
+  background:#1e293b;
+  padding:20px;
+  border-radius:12px;
+  width:700px;
+  margin:auto;
+}
+.grid{
+  display:grid;
+  gap:4px;
+  margin-top:20px;
+}
+.cell{
+  width:45px;height:45px;
+  border-radius:6px;
+}
+.safe{background:#22c55e}
+.unknown{background:#64748b}
+.danger{background:#ef4444}
+button{
+  padding:10px 20px;
+  margin:10px;
+  border:none;
+  border-radius:8px;
+  background:#6366f1;
+  color:white;
+  font-size:16px;
+}
 </style>
 </head>
-<body>
 
-<h1>Dynamic Wumpus Agent</h1>
+<body>
+<div class="card">
+<h1>🧠 Dynamic Wumpus Agent</h1>
 
 Rows <input id="rows" value="4">
 Cols <input id="cols" value="4">
-<button onclick="start()">Start</button>
-<button onclick="step()">Step</button>
+<br>
+<button onclick="start()">Start Episode</button>
+<button onclick="step()">Next Step</button>
 
 <h3 id="percepts"></h3>
 <h3 id="steps"></h3>
 
 <div id="grid" class="grid"></div>
+</div>
 
 <script src="/static/script.js"></script>
 </body>

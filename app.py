@@ -3,8 +3,8 @@ from logic import KnowledgeBase, WumpusWorld
 
 app = Flask(__name__)
 
-world = None
-kb = None
+world=None
+kb=None
 
 @app.route("/")
 def home():
@@ -12,56 +12,61 @@ def home():
 
 @app.route("/start", methods=["POST"])
 def start():
-    global world, kb
-    data = request.json
-    rows = int(data["rows"])
-    cols = int(data["cols"])
+    global world,kb
+    data=request.json
+    rows=int(data["rows"])
+    cols=int(data["cols"])
 
-    world = WumpusWorld(rows, cols)
-    kb = KnowledgeBase(rows, cols)
+    world=WumpusWorld(rows,cols)
+    kb=KnowledgeBase()
+    kb.safe_cells.add((0,0))
 
-    return jsonify({"msg":"world created"})
+    return jsonify({"msg":"started"})
 
 @app.route("/step")
 def step():
-    global world, kb
+    global world,kb
+    r,c=world.agent
 
-    r,c = world.agent
     breeze, stench = world.percepts()
+    neighbors = world.neighbors(r,c)
 
-    percepts = []
-    if breeze: percepts.append("Breeze")
-    if stench: percepts.append("Stench")
+    kb.tell_percepts((r,c),breeze,stench,neighbors)
 
-    # TELL KB percept rules
-    if breeze:
-        kb.tell([f"P{r}{c}"])
-    if stench:
-        kb.tell([f"W{r}{c}"])
-
-    world.visited.add((r,c))
-
-    # move randomly to safe neighbor (demo)
-    for n in world.neighbors(r,c):
-        if n not in world.visited:
-            world.agent = n
+    # choose next SAFE cell
+    moved=False
+    for n in neighbors:
+        if n not in world.visited and kb.is_safe(n):
+            world.agent=n
+            world.visited.add(n)
+            moved=True
             break
 
-    grid = []
+    percept_text=[]
+    percept_text.append("Breeze" if breeze else "No Breeze")
+    percept_text.append("Stench" if stench else "No Stench")
+
+    # build grid view
+    grid=[]
     for i in range(world.rows):
-        row = []
+        row=[]
         for j in range(world.cols):
-            if (i,j) in world.visited:
+            cell=(i,j)
+
+            if cell in kb.pit_cells or cell in kb.wumpus_cells:
+                row.append("danger")
+            elif cell in kb.safe_cells:
                 row.append("safe")
             else:
                 row.append("unknown")
+
         grid.append(row)
 
     return jsonify({
-        "grid": grid,
-        "percepts": percepts,
-        "inference": kb.inference_steps
+        "grid":grid,
+        "percepts":percept_text,
+        "steps":kb.inference_steps
     })
 
-if __name__ == "__main__":
+if __name__=="__main__":
     app.run()
